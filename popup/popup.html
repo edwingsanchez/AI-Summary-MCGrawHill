@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MHE English Study Summarizer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-box">⚡</div>
+        <div class="title-group">
+          <h1>MHE Study Summarizer</h1>
+          <span class="subtitle">McGraw-Hill Exam Prep AI</span>
+        </div>
+      </div>
+      <div class="badge-tag">v1.0</div>
+    </header>
+
+    <!-- Reader Detection Card -->
+    <section class="card reader-card">
+      <div class="card-row">
+        <span class="label">📖 Current Chapter:</span>
+        <span class="value highlight" id="chapter-label">Detectando libro...</span>
+      </div>
+      <div class="card-row">
+        <span class="label">📄 Página Actual:</span>
+        <span class="value" id="page-label">--</span>
+      </div>
+      <div class="anti-copy-tag">
+        <span class="shield-icon">🛡️</span>
+        <span>Anti-bloqueo de copia activado</span>
+      </div>
+    </section>
+
+    <!-- Model & API Key Configuration Card -->
+    <section class="card config-card">
+      <h2 class="card-title">⚙️ Configuración del Modelo de IA</h2>
+
+      <!-- Provider Selector -->
+      <div class="form-group">
+        <label for="provider-select">Proveedor de IA:</label>
+        <select id="provider-select" class="form-control">
+          <option value="gemini">Google Gemini (Recomendado)</option>
+          <option value="deepseek">DeepSeek AI</option>
+        </select>
+      </div>
+
+      <!-- Model Selector -->
+      <div class="form-group">
+        <label for="model-select">Modelo:</label>
+        <select id="model-select" class="form-control">
+          <!-- Populated dynamically via JS -->
+        </select>
+        <div id="custom-model-container" style="display: none; margin-top: 6px;">
+          <input type="text" id="custom-model-input" class="form-control" placeholder="Escribe el ID del modelo (ej. gemini-3.8-flash)...">
+        </div>
+      </div>
+
+      <!-- API Key Input -->
+      <div class="form-group">
+        <div class="label-with-link">
+          <label for="api-key-input">API Key de <span id="key-provider-name">Gemini</span>:</label>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" id="key-help-link" class="help-link">Obtener API Key ↗</a>
+        </div>
+        <div class="input-with-action">
+          <input type="password" id="api-key-input" class="form-control" placeholder="Pega tu API Key aquí...">
+          <button type="button" id="btn-toggle-key" class="btn-icon" title="Mostrar/Ocultar">👁️</button>
+          <button type="button" id="btn-save-key" class="btn-save" title="Guardar clave">Guardar</button>
+        </div>
+        <span id="key-status" class="status-hint"></span>
+      </div>
+    </section>
+
+    <!-- Play & Control Action Area -->
+    <section class="card actions-card">
+      <div class="main-buttons">
+        <!-- Big Play Button -->
+        <button id="btn-play" class="btn-main btn-play">
+          <span class="btn-icon-large">▶</span>
+          <div class="btn-text-group">
+            <span class="btn-primary-text">INICIAR RESUMEN (PLAY)</span>
+            <span class="btn-subtext">Resume el capítulo página por página automáticamente</span>
+          </div>
+        </button>
+
+        <!-- Stop Button -->
+        <button id="btn-stop" class="btn-main btn-stop" style="display: none;">
+          <span class="btn-icon-large">⏹</span>
+          <div class="btn-text-group">
+            <span class="btn-primary-text">DETENER PROCESO</span>
+            <span class="btn-subtext">Pausa la lectura y conserva lo avanzado</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="secondary-actions">
+        <button id="btn-single-page" class="btn-secondary" title="Resume únicamente la página que tienes abierta ahora">
+          📄 Resumir solo esta página
+        </button>
+        <button id="btn-copy-raw" class="btn-secondary" title="Copia el texto extraído al portapapeles sin resumen">
+          📋 Copiar texto plano
+        </button>
+      </div>
+    </section>
+
+    <!-- Dynamic Status Indicator -->
+    <section class="card status-card">
+      <div class="status-header">
+        <span class="status-title">Estado del Proceso:</span>
+        <span id="status-pages-count" class="badge-count">0 páginas</span>
+      </div>
+
+      <div class="status-display status-idle" id="status-display-box">
+        <div class="spinner" id="status-spinner"></div>
+        <span id="status-indicator-text">Listo para iniciar</span>
+      </div>
+      <div id="status-tech-details" class="status-tech-details" style="display: none;"></div>
+    </section>
+
+    <!-- Download Document Section -->
+    <section class="card download-card">
+      <div class="download-header-row">
+        <h2 class="card-title">📥 Descargar Resumen del Capítulo</h2>
+        <span class="badge-format-choice">Word o PDF</span>
+      </div>
+      <p class="download-hint" id="download-hint-text">
+        Elige tu formato preferido (botones inactivos/oscuros mientras resume; activos al completar):
+      </p>
+
+      <!-- Botones de Descarga: Word y PDF (Oscuros cuando resume; Activos cuando completado) -->
+      <div class="download-actions-grid">
+        <button id="btn-download-word" class="btn-download btn-download-word disabled" disabled title="Descargar documento editable para Microsoft Word">
+          <span class="dl-icon">📄</span>
+          <div class="dl-text-group">
+            <span class="dl-primary-text">Descargar en Word (.doc)</span>
+            <span class="dl-subtext">Documento editable formateado</span>
+          </div>
+        </button>
+
+        <button id="btn-download-pdf" class="btn-download btn-download-pdf disabled" disabled title="Abrir y guardar directamente en PDF">
+          <span class="dl-icon">📑</span>
+          <div class="dl-text-group">
+            <span class="dl-primary-text">Guardar en PDF (.pdf)</span>
+            <span class="dl-subtext">Vista de impresión lista para PDF</span>
+          </div>
+        </button>
+      </div>
+
+      <div class="download-extra-actions">
+        <button id="btn-copy-doc" class="btn-secondary" title="Copiar el contenido al portapapeles">
+          📋 Copiar texto al Portapapeles
+        </button>
+      </div>
+    </section>
+
+    <!-- Preview Tab (Accordion) -->
+    <section class="card preview-card">
+      <button id="btn-toggle-preview" class="btn-accordion">
+        <span>👁️ Vista Previa del Documento Generado</span>
+        <span id="preview-arrow">▼</span>
+      </button>
+      <div id="preview-content-box" class="preview-content collapsed">
+        <div id="preview-empty-text" class="preview-empty">Aún no se ha generado ningún resumen. Haz clic en ▶ Iniciar Resumen.</div>
+        <pre id="preview-text" class="preview-text" style="display: none;"></pre>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>McGraw-Hill English Course Companion • Éxito en tu examen</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

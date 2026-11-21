@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summary del Chapter - MHE English Course</title>
+  <link rel="icon" href="icons/icon48.png">
+  <style>
+    @page {
+      size: letter;
+      margin: 20mm 18mm 20mm 18mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      color: #1e293b;
+      background: #f1f5f9;
+      padding: 24px 16px;
+    }
+    .top-toolbar {
+      max-width: 880px;
+      margin: 0 auto 16px auto;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #e2e8f0;
+    }
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-action {
+      border: none;
+      padding: 9px 16px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-pdf {
+      background: #dc2626;
+      color: white;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+    }
+    .btn-pdf:hover {
+      background: #b91c1c;
+      transform: translateY(-1px);
+    }
+    .btn-word {
+      background: #2563eb;
+      color: white;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+    .btn-word:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    .btn-copy {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-copy:hover {
+      background: #e2e8f0;
+    }
+    .container {
+      max-width: 880px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 44px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+      min-height: 500px;
+    }
+    .header-box {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 18px;
+      margin-bottom: 28px;
+    }
+    .badge-course {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 10px;
+      border: 1px solid #bfdbfe;
+    }
+    h1 {
+      font-size: 2rem;
+      color: #0f172a;
+      line-height: 1.25;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+    .meta-line {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    h2 {
+      font-size: 1.3rem;
+      color: #1e40af;
+      background: #f1f5f9;
+      border-left: 5px solid #2563eb;
+      padding: 9px 14px;
+      border-radius: 6px;
+      margin-top: 32px;
+      margin-bottom: 14px;
+      font-weight: 700;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 1.08rem;
+      color: #0f172a;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      page-break-after: avoid;
+    }
+    p {
+      margin-bottom: 12px;
+    }
+    ul, ol {
+      margin-bottom: 14px;
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    strong {
+      color: #0f172a;
+    }
+    hr {
+      border: 0;
+      border-top: 1px solid #cbd5e1;
+      margin: 28px 0;
+    }
+    blockquote, .answer-callout {
+      background-color: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: #065f46;
+      margin: 12px 0 20px 0;
+      border: 1px solid #a7f3d0;
+      border-left-width: 4px;
+      page-break-inside: avoid;
+    }
+    blockquote strong, .answer-callout strong {
+      color: #047857;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .top-toolbar {
+        display: none !important;
+      }
+      .container {
+        max-width: 100%;
+        padding: 0;
+        box-shadow: none;
+        border: none;
+      }
+      h2 {
+        page-break-before: auto;
+      }
+      blockquote, .answer-callout {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Action Toolbar (hidden when printing) -->
+  <div class="top-toolbar">
+    <div class="toolbar-brand">
+      <span>⚡</span>
+      <span id="toolbar-title">MHE Study Guide</span>
+    </div>
+    <div class="toolbar-actions">
+      <button id="btn-print-pdf" class="btn-action btn-pdf" title="Guardar directamente como PDF">
+        📑 Guardar en PDF / Imprimir (Ctrl+P)
+      </button>
+      <button id="btn-download-word" class="btn-action btn-word" title="Descargar como documento editable Word">
+        📄 Descargar en Word (.doc)
+      </button>
+      <button id="btn-copy-content" class="btn-action btn-copy" title="Copiar texto">
+        📋 Copiar
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Printable Document Container -->
+  <div class="container" id="doc-container">
+    <div class="header-box">
+      <div class="badge-course">McGraw-Hill English Course • Guía de Estudio para Examen Final</div>
+      <h1 id="chapter-doc-title">Summary del Chapter</h1>
+      <div class="meta-line" id="chapter-doc-meta">Cargando contenido...</div>
+    </div>
+    <main id="document-body">
+      <div class="empty-state">
+        <p>Cargando el resumen del capítulo...</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="lib/doc-generator.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

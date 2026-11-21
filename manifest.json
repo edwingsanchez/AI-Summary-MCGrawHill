@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "MHE English Study Summarizer",
+  "version": "1.0.0",
+  "description": "Resume automáticamente páginas de libros McGraw-Hill capítulo por capítulo (Chapter) con Gemini o DeepSeek y genera guías de estudio con preguntas de examen.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "*://*.mheducation.com/*",
+    "*://generativelanguage.googleapis.com/*",
+    "*://api.deepseek.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.mheducation.com/*"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "MHE English Study Summarizer"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "viewer.html",
+        "viewer.js",
+        "lib/*",
+        "icons/*"
+      ],
+      "matches": [
+        "*://*.mheducation.com/*"
+      ]
+    }
+  ]
+}
