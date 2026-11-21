@@ -24,8 +24,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Update Page Title and Metadata
   document.title = `Summary del ${chapterTitle}`;
   chapterDocTitle.textContent = `Summary del ${chapterTitle}`;
+  const omittedCount = loopState.omittedPagesCount || 0;
   toolbarTitle.textContent = `Summary del ${chapterTitle}`;
-  chapterDocMeta.textContent = `${pagesCount ? `📄 ${pagesCount} páginas analizadas • ` : ''}📅 Fecha: ${timestamp}`;
+  chapterDocMeta.textContent = `${pagesCount ? `📄 ${pagesCount} páginas de teoría analizadas${omittedCount ? ` (${omittedCount} páginas de ejercicios omitidas)` : ''} • ` : ''}📅 Fecha: ${timestamp}`;
 
   if (markdown) {
     const cleanContent = typeof DocGenerator !== 'undefined'
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const wordContent = DocGenerator.generateWordDoc(chapterTitle, markdown, { totalPages: pagesCount });
+    const wordContent = DocGenerator.generateWordDoc(chapterTitle, markdown, { totalPages: pagesCount, omittedPages: omittedCount });
     const cleanFilenameTitle = chapterTitle.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
     const filename = `Summary_del_${cleanFilenameTitle}.doc`;
     const mimeType = 'application/msword;charset=utf-8';

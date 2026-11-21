@@ -16,6 +16,7 @@ let loopState = {
   initialUnitTitle: null,
   currentUnitTitle: null,
   pageSummaries: [],
+  omittedPagesCount: 0,
   finalSummaryMarkdown: null,
   finalHtml: null,
   activeTabId: null,
@@ -42,6 +43,7 @@ async function syncState(customMessage = null) {
       chapterTitle: activeChapTitle,
       unitTitle: activeChapTitle,
       pagesCount: loopState.pageSummaries.length,
+      omittedPagesCount: loopState.omittedPagesCount || 0,
       hasCompletedDoc: !!loopState.finalSummaryMarkdown,
       finalSummaryMarkdown: loopState.finalSummaryMarkdown,
       finalHtml: loopState.finalHtml
@@ -59,6 +61,7 @@ async function syncState(customMessage = null) {
           chapterTitle: activeChapTitle,
           unitTitle: activeChapTitle,
           pagesCount: loopState.pageSummaries.length,
+          omittedPagesCount: loopState.omittedPagesCount || 0,
           hasCompletedDoc: !!loopState.finalSummaryMarkdown
         }
       });
@@ -90,13 +93,14 @@ async function getActiveMheTab() {
  * Load user settings from storage
  */
 async function getSettings() {
-  const data = await chrome.storage.sync.get(['provider', 'geminiKey', 'deepseekKey', 'model', 'downloadFormat']);
+  const data = await chrome.storage.sync.get(['provider', 'geminiKey', 'deepseekKey', 'model', 'downloadFormat', 'omitExercises']);
   const provider = data.provider || 'gemini';
   const apiKey = provider === 'gemini' ? (data.geminiKey || '') : (data.deepseekKey || '');
   const model = data.model || (provider === 'gemini' ? 'gemini-3.8-flash' : 'deepseek-flash');
-  const downloadFormat = data.downloadFormat || 'html';
+  const downloadFormat = data.downloadFormat || 'word';
+  const omitExercises = data.omitExercises !== false; // Default true (omit exercises)
 
-  return { provider, apiKey, model, downloadFormat };
+  return { provider, apiKey, model, downloadFormat, omitExercises };
 }
 
 /**
@@ -126,6 +130,7 @@ async function startUnitLoop() {
   // Reset accumulator
   loopState.isLoopRunning = true;
   loopState.pageSummaries = [];
+  loopState.omittedPagesCount = 0;
   loopState.finalSummaryMarkdown = null;
   loopState.finalHtml = null;
   loopState.initialChapterId = null;
@@ -164,6 +169,40 @@ async function startUnitLoop() {
     // Main multi-page loop
     while (loopState.isLoopRunning) {
       const pageNumStr = pageData.pageNum ? `Pág. ${pageData.pageNum}` : pageData.position;
+
+      // 1.5 CHECK: OMIT EXERCISE PAGES
+      const settings = await getSettings();
+      if (settings.omitExercises && pageData.isExercise) {
+        loopState.omittedPagesCount = (loopState.omittedPagesCount || 0) + 1;
+        console.log(`[MHE Summarizer] Omitiendo página de ejercicios ${pageNumStr}: ${pageData.exerciseReason}`);
+        await syncState(`[OMITIDA - ${pageNumStr}] Ejercicios detectados (${pageData.exerciseReason || 'Práctica'}). Pasando a siguiente página...`);
+
+        // Navigate to next page immediately without calling AI
+        const navResult = await sendMessageToTab(tab.id, { action: 'CLICK_NEXT_PAGE' });
+        if (!navResult || navResult.reason === 'END_OF_BOOK') {
+          console.log('[MHE Summarizer] Fin del libro alcanzado tras omitir ejercicios.');
+          break;
+        }
+
+        if (!loopState.isLoopRunning) break;
+
+        // Extract new page data
+        const nextPageData = await sendMessageToTab(tab.id, { action: 'EXTRACT_PAGE_DATA' });
+        if (!nextPageData) break;
+
+        // Check if new Chapter started
+        const newChapId = nextPageData.chapterId || nextPageData.unitId;
+        if (newChapId && loopState.initialChapterId && newChapId !== loopState.initialChapterId) {
+          console.log(`[MHE Summarizer] ¡Nuevo Capítulo detectado tras omitir ejercicios! Deteniendo avance.`);
+          break;
+        }
+
+        pageData = nextPageData;
+        loopState.currentChapterTitle = pageData.chapterTitle || pageData.unitTitle;
+        loopState.currentUnitTitle = loopState.currentChapterTitle;
+        continue; // Cycle again to process or check next page
+      }
+
       loopState.status = 'SUMMARIZING';
       await syncState(`[PROCESANDO ${pageNumStr}] Extrayendo y resumiendo con ${model}...`);
 
@@ -268,19 +307,19 @@ async function startUnitLoop() {
         loopState.finalSummaryMarkdown = DocGenerator.generateMarkdown(
           loopState.initialChapterTitle,
           masterDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.finalWordDoc = DocGenerator.generateWordDoc(
           loopState.initialChapterTitle,
           masterDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.finalPdfHtml = DocGenerator.generatePdfHtml(
           loopState.initialChapterTitle,
           masterDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.status = 'COMPLETED';
@@ -301,19 +340,19 @@ async function startUnitLoop() {
         loopState.finalSummaryMarkdown = DocGenerator.generateMarkdown(
           loopState.initialChapterTitle,
           fallbackDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.finalWordDoc = DocGenerator.generateWordDoc(
           loopState.initialChapterTitle,
           fallbackDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.finalPdfHtml = DocGenerator.generatePdfHtml(
           loopState.initialChapterTitle,
           fallbackDoc,
-          { totalPages: loopState.pageSummaries.length, model }
+          { totalPages: loopState.pageSummaries.length, omittedPages: loopState.omittedPagesCount, model }
         );
 
         loopState.status = 'COMPLETED';
@@ -504,8 +543,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         isLoopRunning: loopState.isLoopRunning,
         status: loopState.status,
         message: loopState.message,
+        chapterTitle: loopState.currentChapterTitle || loopState.initialChapterTitle,
         unitTitle: loopState.currentUnitTitle || loopState.initialUnitTitle,
         pagesCount: loopState.pageSummaries.length,
+        omittedPagesCount: loopState.omittedPagesCount || 0,
         hasCompletedDoc: !!loopState.finalSummaryMarkdown,
         finalSummaryMarkdown: loopState.finalSummaryMarkdown
       }

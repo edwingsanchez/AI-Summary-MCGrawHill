@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnDownloadPdf = document.getElementById('btn-download-pdf');
   const btnCopyDoc = document.getElementById('btn-copy-doc');
   const downloadHintText = document.getElementById('download-hint-text');
+  const toggleOmitExercises = document.getElementById('toggle-omit-exercises');
 
   const btnTogglePreview = document.getElementById('btn-toggle-preview');
   const previewArrow = document.getElementById('preview-arrow');
@@ -80,10 +81,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // CONFIGURATION & API KEYS
   // ==========================================
   async function loadSettings() {
-    const data = await chrome.storage.sync.get(['provider', 'geminiKey', 'deepseekKey', 'model']);
+    const data = await chrome.storage.sync.get(['provider', 'geminiKey', 'deepseekKey', 'model', 'omitExercises']);
     currentProvider = data.provider || 'gemini';
     keys.gemini = data.geminiKey || '';
     keys.deepseek = data.deepseekKey || '';
+
+    if (toggleOmitExercises) {
+      toggleOmitExercises.checked = data.omitExercises !== false;
+    }
 
     providerSelect.value = currentProvider;
     updateProviderUI(currentProvider, data.model);
@@ -158,6 +163,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       await chrome.storage.sync.set({ model: val });
     }
   });
+
+  // Omit exercises toggle
+  if (toggleOmitExercises) {
+    toggleOmitExercises.addEventListener('change', async () => {
+      await chrome.storage.sync.set({ omitExercises: toggleOmitExercises.checked });
+    });
+  }
 
   function getActiveModelValue() {
     if (modelSelect.value === 'custom') {
@@ -340,7 +352,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (state.pagesCount !== undefined) {
-      statusPagesCount.textContent = `${state.pagesCount} página${state.pagesCount === 1 ? '' : 's'}`;
+      if (state.omittedPagesCount && state.omittedPagesCount > 0) {
+        statusPagesCount.textContent = `${state.pagesCount} pág${state.pagesCount === 1 ? '' : 's'} (${state.omittedPagesCount} omitida${state.omittedPagesCount === 1 ? '' : 's'})`;
+      } else {
+        statusPagesCount.textContent = `${state.pagesCount} página${state.pagesCount === 1 ? '' : 's'}`;
+      }
     }
 
     if (state.finalSummaryMarkdown) {

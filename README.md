@@ -50,7 +50,12 @@ Extensión de Google Chrome (Manifest V3) diseñada específicamente para estudi
      - `deepseek-chat` y `deepseek-reasoner` (Aliases de compatibilidad).
    - **Opción de Modelo Personalizado:** Puedes seleccionar *"✏️ Otro modelo (Personalizado)..."* y escribir cualquier ID de modelo directamente.
 
-7. **Widget Flotante en Pantalla (HUD):**
+7. **Omisión Automática de Páginas de Ejercicios:**
+   - **Detección inteligente multinivel:** La extensión analiza títulos, encabezados, índice TOC y densidad de espacios para rellenar (`___`) o prompts de actividades (`Grammar Practice`, `Vocabulary Practice`, `Self-Assessment`, `Workbook`, etc.).
+   - **Ahorro de tiempo y tokens:** Salta las hojas de ejercicios inmediatamente sin llamar a la IA ni incluir espacios vacíos en tu resumen, avanzando directo a la siguiente página de teoría.
+   - **Control en la interfaz:** Puedes activar o desactivar la casilla *"🚫 Omitir páginas de ejercicios"* en cualquier momento desde el menú de la extensión.
+
+8. **Widget Flotante en Pantalla (HUD):**
    - En la esquina inferior derecha de la ventana del libro se inyecta un control flotante con el estado en tiempo real, botón Play/Stop y botones directos de descarga para Word y PDF.
 
 ---

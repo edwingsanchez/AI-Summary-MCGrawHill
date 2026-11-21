@@ -60,6 +60,8 @@
     let rawText = '';
     let pageTitle = '';
     let sourceUsed = 'none';
+    let pageHeadings = [];
+    let domFlags = { interactiveInputs: 0 };
 
     // Strategy 1: Check #clo-iframe (Standard McGraw-Hill single page reader)
     const cloIframe = document.querySelector('#clo-iframe, iframe[data-automation-id="clo-iframe"]');
@@ -71,6 +73,10 @@
           const doc = parser.parseFromString(srcdoc, 'text/html');
           cleanReaderDocument(doc);
           pageTitle = doc.querySelector('title')?.innerText?.trim() || doc.querySelector('h1, h2')?.innerText?.trim() || '';
+          pageHeadings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, .activity-title, .exercise-header'))
+            .map(el => el.innerText?.trim())
+            .filter(Boolean);
+          domFlags.interactiveInputs = doc.querySelectorAll('input[type="text"], textarea, .question-container, [data-automation-id*="exercise"]').length;
           rawText = extractTextFromDoc(doc);
           sourceUsed = 'clo-iframe-srcdoc';
         } catch (err) {
@@ -84,6 +90,12 @@
           if (cloIframe.contentDocument && cloIframe.contentDocument.body) {
             const doc = cloIframe.contentDocument;
             pageTitle = pageTitle || doc.querySelector('title')?.innerText?.trim() || doc.querySelector('h1, h2')?.innerText?.trim() || '';
+            if (pageHeadings.length === 0) {
+              pageHeadings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, .activity-title, .exercise-header'))
+                .map(el => el.innerText?.trim())
+                .filter(Boolean);
+            }
+            domFlags.interactiveInputs = doc.querySelectorAll('input[type="text"], textarea, .question-container, [data-automation-id*="exercise"]').length;
             rawText = cloIframe.contentDocument.body.innerText || '';
             sourceUsed = 'clo-iframe-contentDocument';
           }
@@ -121,10 +133,23 @@
       }
     }
 
+    // Check active TOC section node label for exercise indicators
+    const activeTocNode = document.querySelector('mat-tree-node[aria-current="page"], mat-tree-node .material-toc-current-page-indicator');
+    if (activeTocNode) {
+      const parentNode = activeTocNode.closest('mat-tree-node') || activeTocNode;
+      const tocLabel = parentNode.getAttribute('aria-label') || parentNode.innerText?.trim();
+      if (tocLabel) {
+        pageHeadings.push(tocLabel);
+      }
+    }
+
     // Clean up extracted text
     const cleanText = sanitizeExtractedText(rawText);
     const chapterInfo = detectCurrentChapter();
     const positionInfo = detectPosition();
+
+    // Check whether the page is an exercise/practice page
+    const exerciseCheck = detectExercisePage(pageTitle, cleanText, pageHeadings, domFlags);
 
     return {
       text: cleanText,
@@ -136,7 +161,9 @@
       position: positionInfo.raw,
       pageNum: positionInfo.current,
       totalPages: positionInfo.total,
-      source: sourceUsed
+      source: sourceUsed,
+      isExercise: exerciseCheck.isExercise,
+      exerciseReason: exerciseCheck.reason
     };
   }
 
@@ -230,6 +257,94 @@
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
     return cleaned.trim();
+  }
+
+  /**
+   * Intelligently detects whether the current page is an exercise / practice page
+   * to omit it from summarization and study guides.
+   */
+  function detectExercisePage(pageTitle = '', text = '', headings = [], domFlags = {}) {
+    const lowerTitle = (pageTitle || '').toLowerCase();
+    const cleanHeadings = (headings || []).map(h => (h || '').trim().toLowerCase()).filter(Boolean);
+
+    // 1. Explicit Title or Heading matches for exercises/practice
+    // e.g. "Exercises", "Practice 1", "Grammar Practice", "Activity 3", "Self-Assessment", "Workbook", "Vocabulary Practice"
+    const explicitExerciseKeywords = [
+      'exercise', 'exercises', 'practice', 'activities', 'activity', 'workbook',
+      'self-assessment', 'self assessment', 'self-test', 'self test', 'quiz',
+      'comprehension check', 'check your understanding', 'grammar practice',
+      'vocabulary practice', 'language practice', 'pronunciation practice',
+      'listening practice', 'reading practice', 'writing practice', 'speaking practice',
+      'review exercises', 'chapter review', 'pair work', 'group work', 'role play',
+      'your turn', 'over to you', 'test your knowledge', 'test yourself',
+      'ejercicio', 'ejercicios', 'práctica', 'practica', 'actividades', 'actividad',
+      'autoevaluación', 'autoevaluacion', 'repaso', 'cuestionario'
+    ];
+
+    const hasExplicitTitleMatch = explicitExerciseKeywords.some(keyword => {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(lowerTitle)) return true;
+      return cleanHeadings.some(h => h.length < 60 && regex.test(h));
+    });
+
+    if (hasExplicitTitleMatch) {
+      const matchedName = pageTitle || cleanHeadings.find(h => explicitExerciseKeywords.some(k => new RegExp(`\\b${k}\\b`, 'i').test(h))) || 'Ejercicios';
+      return {
+        isExercise: true,
+        reason: `Página de ejercicios/práctica identificada por título ("${matchedName}")`
+      };
+    }
+
+    // 2. Count fill-in-the-blank patterns: "___", ".....", "[   ]"
+    const blankMatches = (text.match(/_{3,}|\.{4,}|\[\s{2,}\]|\(\s*blank\s*\)/g) || []).length;
+
+    // 3. Exercise instruction phrases
+    const exerciseInstructionRegex = /\b(complete the (following|sentences?|table|chart|text|dialogue|conversations?)|fill in the (blanks?|missing)|match the (words?|columns?|definitions?|items?|headings?|questions?)|circle the (correct|best)|choose the (correct|best) (word|words|option|answer)|write the correct form|underline the correct|in pairs,? (ask|discuss|compare|practice)|work with a partner|listen and (repeat|choose|fill|complete|circle)|answer the questions below|mark (each|the) statement (true|false)|true or false\??|unscramble the words|put the words in (order|the correct order)|rewrite the sentences)\b/i;
+    const hasExerciseInstruction = exerciseInstructionRegex.test(text);
+
+    // 4. Count numbered exercise items: "1. ____", "2. ____", "1) ...", etc.
+    const numberedExerciseLines = (text.match(/^\s*(?:[1-9]\d?|[a-f])[\.\)]\s+.*(?:_{2,}|\.{3,}|\[|\b(?:is|are|was|were|do|does|did|can|could|would)\b.*\?)/gim) || []).length;
+
+    // 5. Calculate word count of text
+    const totalWords = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+
+    // Case A: High concentration of blanks (3+) with exercise instructions or numbered prompts
+    if (blankMatches >= 3 && (hasExerciseInstruction || numberedExerciseLines >= 2)) {
+      return {
+        isExercise: true,
+        reason: `Hoja de actividades (${blankMatches} espacios para rellenar / prompts de práctica)`
+      };
+    }
+
+    // Case B: 4 or more numbered exercise prompts with short total text (worksheet without theory)
+    if (numberedExerciseLines >= 4 && (totalWords < 350 || hasExerciseInstruction)) {
+      return {
+        isExercise: true,
+        reason: `Cuestionario de ejercicios (${numberedExerciseLines} preguntas de práctica sin texto teórico)`
+      };
+    }
+
+    // Case C: Multiple choice exercise questions without theoretical exposition
+    const mcOptionCount = (text.match(/^\s*[A-D]\)\s+/gim) || []).length;
+    if (mcOptionCount >= 6 && totalWords < 400) {
+      return {
+        isExercise: true,
+        reason: `Cuestionario de opción múltiple (${mcOptionCount} opciones de respuesta sin teoría)`
+      };
+    }
+
+    // Case D: Interactive DOM input elements
+    if (domFlags.interactiveInputs && domFlags.interactiveInputs >= 2) {
+      return {
+        isExercise: true,
+        reason: `Elementos interactivos de evaluación detectados (${domFlags.interactiveInputs} campos de respuesta)`
+      };
+    }
+
+    return {
+      isExercise: false,
+      reason: null
+    };
   }
 
   /**
@@ -516,7 +631,7 @@
     updateHUDInfo();
   }
 
-  function updateHUDInfo() {
+  function updateHUDInfo(stateData = null) {
     if (!hudElement) return;
     const chapter = detectCurrentChapter();
     const pos = detectPosition();
@@ -525,7 +640,13 @@
     const pageEl = hudElement.querySelector('#mhe-hud-page');
 
     if (chapterEl) chapterEl.textContent = chapter.title || 'Chapter 1';
-    if (pageEl) pageEl.textContent = pos.raw || '--';
+    if (pageEl) {
+      if (stateData && stateData.omittedPagesCount && stateData.omittedPagesCount > 0) {
+        pageEl.textContent = `${pos.raw || '--'} (${stateData.omittedPagesCount} ejerc. omitidos)`;
+      } else {
+        pageEl.textContent = pos.raw || '--';
+      }
+    }
   }
 
   function updateHUDState(stateData) {
@@ -541,7 +662,7 @@
     if (!badge || !statusText) return;
 
     badge.className = 'mhe-status-badge';
-    updateHUDInfo();
+    updateHUDInfo(stateData);
 
     function setHudDlState(active) {
       if (btnWord) {
